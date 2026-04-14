@@ -1,0 +1,124 @@
+{
+  "title": "Study Report: Introduction to Supervised Learning",
+  "subject": "Introduction to Supervised Learning",
+  "main_goal": "Explain how supervised learning uses labeled data, how models are trained, and why evaluation matters.",
+  "topics": [
+    {
+      "topic_name": "Features and labels",
+      "importance": "Each training example contains features, which are the inputs, and a label, which is the expected output.",
+      "key_terms": [
+        "Features",
+        "labels",
+        "inputs",
+        "output"
+      ]
+    },
+    {
+      "topic_name": "Training and validation split",
+      "importance": "The training split is used to fit the model, while the validation split helps estimate how well the model generalizes.",
+      "key_terms": [
+        "Training",
+        "validation split",
+        "validation",
+        "generalizes"
+      ]
+    },
+    {
+      "topic_name": "Loss functions",
+      "importance": "Loss functions measure the difference between predictions and true labels.",
+      "key_terms": [
+        "Loss functions",
+        "predictions",
+        "labels"
+      ]
+    },
+    {
+      "topic_name": "Gradient descent",
+      "importance": "Gradient descent is a common optimization algorithm that updates model parameters step by step in the direction that reduces loss.",
+      "key_terms": [
+        "Gradient descent",
+        "gradient",
+        "descent",
+        "optimization",
+        "parameters"
+      ]
+    },
+    {
+      "topic_name": "Overfitting and regularization",
+      "importance": "Regularization techniques, simpler models, and better validation practices can improve generalization.",
+      "key_terms": [
+        "Overfitting",
+        "regularization",
+        "validation",
+        "improve",
+        "generalization"
+      ]
+    }
+  ],
+  "summary": "Supervised learning is a machine learning approach where a model learns from input-output pairs. Each training example contains features, which are the inputs, and a label, which is the expected output. The model studies patterns in the data so that it can make predictions for new examples.\n\nThe dataset is usually divided into training and validation data. The training split is used to fit the model, while the validation split helps estimate how well the model generalizes. This separation reduces the risk of evaluating the model on the same data it already memorized.",
+  "key_points": [
+    "Explain how supervised learning uses labeled data, how models are trained, and why evaluation matters.",
+    "Each training example contains features, which are the inputs, and a label, which is the expected output.",
+    "The training split is used to fit the model, while the validation split helps estimate how well the model generalizes.",
+    "Loss functions measure the difference between predictions and true labels.",
+    "Gradient descent is a common optimization algorithm that updates model parameters step by step in the direction that reduces loss.",
+    "Regularization techniques, simpler models, and better validation practices can improve generalization."
+  ],
+  "quiz": [
+    {
+      "question": "What best describes the main goal of Introduction to Supervised Learning?",
+      "options": [
+        "Explain how supervised learning uses labeled data, how models are trained, and why evaluation matters.",
+        "To remove the need for evaluation and validation.",
+        "To avoid using structured data or labels.",
+        "To replace understanding with memorizing isolated facts."
+      ],
+      "correct_answer": "A",
+      "explanation": "The main goal should match the lecture objective, not a side detail."
+    },
+    {
+      "question": "Which statement best explains Features and labels?",
+      "options": [
+        "The training split is used to fit the model, while the validation split helps estimate how well the model generalizes.",
+        "Each training example contains features, which are the inputs, and a label, which is the expected output.",
+        "Loss functions measure the difference between predictions and true labels.",
+        "Gradient descent is a common optimization algorithm that updates model parameters step by step in the direction that reduces loss."
+      ],
+      "correct_answer": "B",
+      "explanation": "The correct option matches the lecture note explanation of Features and labels."
+    },
+    {
+      "question": "Which statement best explains Training and validation split?",
+      "options": [
+        "Each training example contains features, which are the inputs, and a label, which is the expected output.",
+        "Loss functions measure the difference between predictions and true labels.",
+        "The training split is used to fit the model, while the validation split helps estimate how well the model generalizes.",
+        "Gradient descent is a common optimization algorithm that updates model parameters step by step in the direction that reduces loss."
+      ],
+      "correct_answer": "C",
+      "explanation": "The correct option matches the lecture note explanation of Training and validation split."
+    },
+    {
+      "question": "Which statement best explains Loss functions?",
+      "options": [
+        "Each training example contains features, which are the inputs, and a label, which is the expected output.",
+        "The training split is used to fit the model, while the validation split helps estimate how well the model generalizes.",
+        "Gradient descent is a common optimization algorithm that updates model parameters step by step in the direction that reduces loss.",
+        "Loss functions measure the difference between predictions and true labels."
+      ],
+      "correct_answer": "D",
+      "explanation": "The correct option matches the lecture note explanation of Loss functions."
+    },
+    {
+      "question": "Which statement best explains Gradient descent?",
+      "options": [
+        "Gradient descent is a common optimization algorithm that updates model parameters step by step in the direction that reduces loss.",
+        "Each training example contains features, which are the inputs, and a label, which is the expected output.",
+        "The training split is used to fit the model, while the validation split helps estimate how well the model generalizes.",
+        "Loss functions measure the difference between predictions and true labels."
+      ],
+      "correct_answer": "A",
+      "explanation": "The correct option matches the lecture note explanation of Gradient descent."
+    }
+  ]
+}

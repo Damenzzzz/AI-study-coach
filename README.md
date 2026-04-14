@@ -1,27 +1,55 @@
 # AI Study Coach for Lecture Notes
 
-This project is a mini AI agent system built with LangGraph for Assignment 4. It reads lecture notes from a `.txt`, `.md`, or `.pdf` file, extracts the main lecture information, generates revision material, and exports the result to JSON.
+This project is a mini AI agent system built with LangGraph for Assignment 4. It reads lecture notes from a `.txt`, `.md`, or `.pdf` file, extracts the lecture structure, generates revision material, and exports a polished Markdown study handout.
 
 ## Architecture
 
-The graph uses four nodes:
+The project keeps the same simple 4-node LangGraph pipeline:
 
 1. `ingest_notes` reads the source file and converts it into raw text.
-2. `analyze_notes` makes LLM call #1 to extract the lecture subject, learning goal, and key topics.
-3. `generate_study_material` makes LLM call #2 to create a summary, key points, and quiz questions.
-4. `export_json` writes the final result to a JSON file.
+2. `analyze_notes` makes LLM call #1 and returns `LectureAnalysis`.
+3. `generate_study_material` makes LLM call #2 and returns the final `StudyMaterial`.
+4. `export_report` renders `study_report.md` and optionally writes a secondary JSON file.
 
-The graph state is a Pydantic model in `state.py`, and both LLM responses are parsed with Pydantic structured output models from `schemas.py`.
+The graph state is a Pydantic model in `state.py`, and both LLM calls use structured Pydantic outputs from `schemas.py`.
+
+## Clean Schema Design
+
+The final output structure is intentionally simple and easy to explain during defense:
+
+- `TopicInfo`
+  - `topic_name`
+  - `importance`
+  - `key_terms`
+- `QuizQuestion`
+  - `question`
+  - `options`
+  - `correct_answer`
+  - `explanation`
+- `StudyMaterial`
+  - `title`
+  - `subject`
+  - `main_goal`
+  - `topics`
+  - `summary`
+  - `key_points`
+  - `quiz`
+
+Validation rules:
+
+- each quiz question must contain exactly 4 options
+- `correct_answer` must be one of `A`, `B`, `C`, or `D`
+- optional explanation fields are handled safely during Markdown export
 
 ## Assignment Checklist
 
-- `3+ LangGraph nodes`: implemented in `graph.py` with `ingest_notes`, `analyze_notes`, `generate_study_material`, and `export_json`
-- `2+ LLM calls`: implemented in `utils.py` inside `OpenAIStudyCoachLLM`
+- `3+ LangGraph nodes`: implemented in `graph.py`
+- `2+ LLM calls`: implemented in `OpenAIStudyCoachLLM`
 - `Pydantic structured outputs`: `LectureAnalysis` and `StudyMaterial`
 - `Pydantic graph state`: `AgentState`
-- `Separate prompts.py`: all prompt text is stored there as named constants
+- `Separate prompts.py`: all prompts are stored there
 - `Runnable main entry point`: `main.py`
-- `Sample output file`: `sample_output/output.json`
+- `Sample output file`: `sample_output/study_report.md`
 - `README instructions`: this file
 
 ## Files
@@ -29,11 +57,12 @@ The graph state is a Pydantic model in `state.py`, and both LLM responses are pa
 - `main.py` - command-line entry point
 - `graph.py` - LangGraph workflow
 - `state.py` - Pydantic graph state
-- `schemas.py` - Pydantic structured output models
+- `schemas.py` - Pydantic output models and validation
 - `prompts.py` - all prompts as named constants
-- `utils.py` - file parsing, export helpers, and provider setup
+- `utils.py` - file parsing, LLM setup, Markdown rendering, and export helpers
 - `sample_input/lecture.txt` - example lecture notes
-- `sample_output/output.json` - example exported result
+- `sample_output/study_report.md` - example Markdown study handout
+- `sample_output/study_report.json` - optional technical JSON export
 
 ## Setup
 
@@ -64,10 +93,16 @@ OPENAI_MODEL=gpt-4o-mini
 
 ## Run
 
-Run with automatic provider selection:
+Default run, which writes the Markdown handout:
 
 ```bash
 python main.py sample_input/lecture.txt
+```
+
+Run with an additional JSON export:
+
+```bash
+python main.py sample_input/lecture.txt --json-output sample_output/study_report.json
 ```
 
 Run explicitly with OpenAI:
@@ -82,11 +117,6 @@ Run offline with the built-in mock provider:
 python main.py sample_input/lecture.txt --provider mock
 ```
 
-Important:
-
-- Use `--provider openai` during assignment defense if you want to demonstrate the real `2 LLM calls` requirement live.
-- `--provider mock` exists only so the project is still runnable without an API key in restricted environments.
-
 You can also pass a Markdown or PDF file:
 
 ```bash
@@ -96,28 +126,38 @@ python main.py lecture.pdf
 
 ## Output
 
-The project exports a JSON file with:
+The main final output is:
 
-- `subject`
-- `main_goal`
-- `key_topics`
-- `summary`
-- `key_points`
-- `quiz_questions`
+- `sample_output/study_report.md`
 
-The default output path is `sample_output/output.json`.
+The report contains:
+
+1. Title
+2. Subject
+3. Main goal of the lecture
+4. Key topics
+5. Key terms for each topic
+6. Study-note style summary
+7. Key points / formulas / important facts
+8. Quiz with multiple-choice questions
+9. Answer key
+
+Optional secondary output:
+
+- `sample_output/study_report.json`
 
 ## Notes
 
 - PDF support is basic but functional through `pypdf`.
-- In this repository, the included sample output can be regenerated with `--provider mock` even when no API key is available.
+- For assignment defense, use `--provider openai` if you want to demonstrate the real structured LLM calls live.
+- `--provider mock` keeps the project runnable in environments without an API key.
 
 ## Validation
 
-These checks were rerun after implementation updates:
+These checks were rerun after the Markdown export update:
 
 ```bash
-python main.py sample_input/lecture.txt --provider mock --output sample_output/output.json
-python main.py "C:/Users/chebupel777/Downloads/Assignment 4 AIPE.pdf" --provider mock --output sample_output/assignment_pdf_output.json
-python main.py --help
+python main.py sample_input/lecture.txt --provider mock --output sample_output/study_report.md --json-output sample_output/study_report.json
+python main.py "C:/Users/chebupel777/Downloads/Assignment 4 AIPE.pdf" --provider mock --output sample_output/assignment_report.md
+python -m compileall main.py graph.py state.py schemas.py prompts.py utils.py
 ```

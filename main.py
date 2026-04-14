@@ -24,8 +24,13 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--output",
-        default="sample_output/output.json",
-        help="Path for the exported JSON file.",
+        default="sample_output/study_report.md",
+        help="Path for the exported Markdown study report.",
+    )
+    parser.add_argument(
+        "--json-output",
+        default=None,
+        help="Optional path for a secondary JSON export.",
     )
     parser.add_argument(
         "--provider",
@@ -52,13 +57,18 @@ def main() -> int:
         initial_state = AgentState(
             input_path=str(Path(args.input_path)),
             output_path=str(Path(args.output)),
+            json_output_path=(
+                str(Path(args.json_output)) if args.json_output is not None else None
+            ),
         )
         final_state = AgentState.model_validate(graph.invoke(initial_state))
 
         print(f"Provider used: {llm_client.provider_name}")
-        print(f"Output saved to: {final_state.exported_output_path}")
-        if final_state.analysis is not None:
-            print(f"Detected subject: {final_state.analysis.subject}")
+        print(f"Markdown report saved to: {final_state.exported_output_path}")
+        if final_state.exported_json_path is not None:
+            print(f"JSON export saved to: {final_state.exported_json_path}")
+        if final_state.study_material is not None:
+            print(f"Detected subject: {final_state.study_material.subject}")
         return 0
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
