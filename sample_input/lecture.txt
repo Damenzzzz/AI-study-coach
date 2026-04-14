@@ -1,0 +1,26 @@
+Introduction to Supervised Learning
+
+Goal: Explain how supervised learning uses labeled data, how models are trained, and why evaluation matters.
+
+Topics
+1. Features and labels
+2. Training and validation split
+3. Loss functions
+4. Gradient descent
+5. Overfitting and regularization
+
+Supervised learning is a machine learning approach where a model learns from input-output pairs.
+Each training example contains features, which are the inputs, and a label, which is the expected output.
+The model studies patterns in the data so that it can make predictions for new examples.
+
+The dataset is usually divided into training and validation data.
+The training split is used to fit the model, while the validation split helps estimate how well the model generalizes.
+This separation reduces the risk of evaluating the model on the same data it already memorized.
+
+Loss functions measure the difference between predictions and true labels.
+During training, the model tries to minimize loss so that predictions become more accurate.
+Gradient descent is a common optimization algorithm that updates model parameters step by step in the direction that reduces loss.
+
+One major challenge is overfitting.
+An overfitted model performs well on training data but poorly on unseen data.
+Regularization techniques, simpler models, and better validation practices can improve generalization.

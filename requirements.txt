@@ -1,0 +1,5 @@
+langgraph==1.1.6
+langchain-openai==1.1.12
+pydantic==2.13.0
+pypdf==6.10.1
+python-dotenv==1.2.2
