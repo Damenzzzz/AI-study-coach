@@ -1,0 +1,43 @@
+{
+  "input_file": "C:/Users/chebupel777/Downloads/Assignment 4 AIPE.pdf",
+  "subject": "Assignment 4",
+  "main_goal": "Video Link: https://www.youtube.com/watch?v=0a3XABPT8n0  ABOUT THE DEADLINE  You can complete and defend the homework before the Week 13 practice sessions to receive a +15%  bonus.",
+  "key_topics": [
+    {
+      "name": "Assignment 4 definition",
+      "description": "prompts.py All prompts in a separate file as named constants Free LLM options: Google Gemini API, Groq, Mistral — all covered in the lectures."
+    },
+    {
+      "name": "Assignment 4 workflow",
+      "description": "prompts.py All prompts in a separate file as named constants Free LLM options: Google Gemini API, Groq, Mistral — all covered in the lectures."
+    },
+    {
+      "name": "Assignment 4 applications",
+      "description": "prompts.py All prompts in a separate file as named constants Free LLM options: Google Gemini API, Groq, Mistral — all covered in the lectures."
+    }
+  ],
+  "summary": "the Moodle. Video Link: https://www.youtube.com/watch?v=0a3XABPT8n0 bonus. Or you can defend it during the Week 14 practice session, but without the bonus. In any case, the homework must be defended during your practice session.",
+  "key_points": [
+    "Video Link: https://www.youtube.com/watch?v=0a3XABPT8n0  ABOUT THE DEADLINE  You can complete and defend the homework before the Week 13 practice sessions to receive a +15%  bonus.",
+    "prompts.py All prompts in a separate file as named constants Free LLM options: Google Gemini API, Groq, Mistral — all covered in the lectures.",
+    "Assignment 4 should be revised through its definitions, steps, and examples."
+  ],
+  "quiz_questions": [
+    {
+      "question": "What is the main goal of the lecture on Assignment 4?",
+      "answer": "Video Link: https://www.youtube.com/watch?v=0a3XABPT8n0  ABOUT THE DEADLINE  You can complete and defend the homework before the Week 13 practice sessions to receive a +15%  bonus."
+    },
+    {
+      "question": "What is Assignment 4 definition?",
+      "answer": "prompts.py All prompts in a separate file as named constants Free LLM options: Google Gemini API, Groq, Mistral — all covered in the lectures."
+    },
+    {
+      "question": "What is Assignment 4 workflow?",
+      "answer": "prompts.py All prompts in a separate file as named constants Free LLM options: Google Gemini API, Groq, Mistral — all covered in the lectures."
+    },
+    {
+      "question": "What is Assignment 4 applications?",
+      "answer": "prompts.py All prompts in a separate file as named constants Free LLM options: Google Gemini API, Groq, Mistral — all covered in the lectures."
+    }
+  ]
+}
