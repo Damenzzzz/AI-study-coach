@@ -1,124 +1,522 @@
 {
-  "title": "Study Report: Introduction to Supervised Learning",
-  "subject": "Introduction to Supervised Learning",
-  "main_goal": "Explain how supervised learning uses labeled data, how models are trained, and why evaluation matters.",
-  "topics": [
-    {
-      "topic_name": "Features and labels",
-      "importance": "Each training example contains features, which are the inputs, and a label, which is the expected output.",
-      "key_terms": [
-        "Features",
-        "labels",
-        "inputs",
-        "output"
-      ]
-    },
-    {
-      "topic_name": "Training and validation split",
-      "importance": "The training split is used to fit the model, while the validation split helps estimate how well the model generalizes.",
-      "key_terms": [
-        "Training",
-        "validation split",
-        "validation",
-        "generalizes"
-      ]
-    },
-    {
-      "topic_name": "Loss functions",
-      "importance": "Loss functions measure the difference between predictions and true labels.",
-      "key_terms": [
-        "Loss functions",
-        "predictions",
-        "labels"
-      ]
-    },
-    {
-      "topic_name": "Gradient descent",
-      "importance": "Gradient descent is a common optimization algorithm that updates model parameters step by step in the direction that reduces loss.",
-      "key_terms": [
-        "Gradient descent",
-        "gradient",
-        "descent",
-        "optimization",
-        "parameters"
-      ]
-    },
-    {
-      "topic_name": "Overfitting and regularization",
-      "importance": "Regularization techniques, simpler models, and better validation practices can improve generalization.",
-      "key_terms": [
-        "Overfitting",
-        "regularization",
-        "validation",
-        "improve",
-        "generalization"
-      ]
-    }
-  ],
-  "summary": "Supervised learning is a machine learning approach where a model learns from input-output pairs. Each training example contains features, which are the inputs, and a label, which is the expected output. The model studies patterns in the data so that it can make predictions for new examples.\n\nThe dataset is usually divided into training and validation data. The training split is used to fit the model, while the validation split helps estimate how well the model generalizes. This separation reduces the risk of evaluating the model on the same data it already memorized.",
-  "key_points": [
-    "Explain how supervised learning uses labeled data, how models are trained, and why evaluation matters.",
-    "Each training example contains features, which are the inputs, and a label, which is the expected output.",
-    "The training split is used to fit the model, while the validation split helps estimate how well the model generalizes.",
-    "Loss functions measure the difference between predictions and true labels.",
-    "Gradient descent is a common optimization algorithm that updates model parameters step by step in the direction that reduces loss.",
-    "Regularization techniques, simpler models, and better validation practices can improve generalization."
-  ],
-  "quiz": [
-    {
-      "question": "What best describes the main goal of Introduction to Supervised Learning?",
-      "options": [
-        "Explain how supervised learning uses labeled data, how models are trained, and why evaluation matters.",
-        "To remove the need for evaluation and validation.",
-        "To avoid using structured data or labels.",
-        "To replace understanding with memorizing isolated facts."
-      ],
-      "correct_answer": "A",
-      "explanation": "The main goal should match the lecture objective, not a side detail."
-    },
-    {
-      "question": "Which statement best explains Features and labels?",
-      "options": [
-        "The training split is used to fit the model, while the validation split helps estimate how well the model generalizes.",
-        "Each training example contains features, which are the inputs, and a label, which is the expected output.",
-        "Loss functions measure the difference between predictions and true labels.",
-        "Gradient descent is a common optimization algorithm that updates model parameters step by step in the direction that reduces loss."
-      ],
-      "correct_answer": "B",
-      "explanation": "The correct option matches the lecture note explanation of Features and labels."
-    },
-    {
-      "question": "Which statement best explains Training and validation split?",
-      "options": [
-        "Each training example contains features, which are the inputs, and a label, which is the expected output.",
-        "Loss functions measure the difference between predictions and true labels.",
-        "The training split is used to fit the model, while the validation split helps estimate how well the model generalizes.",
-        "Gradient descent is a common optimization algorithm that updates model parameters step by step in the direction that reduces loss."
-      ],
-      "correct_answer": "C",
-      "explanation": "The correct option matches the lecture note explanation of Training and validation split."
-    },
-    {
-      "question": "Which statement best explains Loss functions?",
-      "options": [
-        "Each training example contains features, which are the inputs, and a label, which is the expected output.",
-        "The training split is used to fit the model, while the validation split helps estimate how well the model generalizes.",
-        "Gradient descent is a common optimization algorithm that updates model parameters step by step in the direction that reduces loss.",
-        "Loss functions measure the difference between predictions and true labels."
-      ],
-      "correct_answer": "D",
-      "explanation": "The correct option matches the lecture note explanation of Loss functions."
-    },
-    {
-      "question": "Which statement best explains Gradient descent?",
-      "options": [
-        "Gradient descent is a common optimization algorithm that updates model parameters step by step in the direction that reduces loss.",
-        "Each training example contains features, which are the inputs, and a label, which is the expected output.",
-        "The training split is used to fit the model, while the validation split helps estimate how well the model generalizes.",
-        "Loss functions measure the difference between predictions and true labels."
-      ],
-      "correct_answer": "A",
-      "explanation": "The correct option matches the lecture note explanation of Gradient descent."
-    }
-  ]
+  "coverage": {
+    "source_file": "lecture_long.md",
+    "total_pages_read": 1,
+    "total_words_read": 1189,
+    "total_chunks_processed": 13,
+    "selected_summary_mode": "large",
+    "selected_quiz_count": 10,
+    "output_markdown_path": "sample_output/study_report.md",
+    "output_json_path": "sample_output/study_report.json"
+  },
+  "study_material": {
+    "title": "Study Report: Supervised Learning Foundations and Model Evaluation",
+    "subject": "Supervised Learning Foundations and Model Evaluation",
+    "main_goal": "understand the end-to-end supervised learning workflow, from data representation to training, evaluation, and generalization.",
+    "overview": "Supervised Learning Foundations and Model Evaluation, What supervised learning solves, Features, labels, and datasets, Preprocessing and feature engineering: Learning goal: understand the end-to-end supervised learning workflow, from data representation to training, evaluation, and generalization. Supervised learning is a machine learning setting in which the training data contains both inputs and expected outputs. Features are the measurable attributes used as inputs to the model. A label is the expected output attached to each example. Raw data is rarely ready for learning. Numerical variables may need scaling, categorical variables may need encoding, and missing values may need imputation.\n\nTraining, validation, and test data, Linear regression as a baseline, Logistic regression for classification: The dataset is usually divided into training, validation, and test splits. The training split is used to fit the model parameters. Linear regression models the target as a weighted sum of the input features plus an intercept term. It is often the first model students learn because the assumptions and the optimization objective are easy to explain. Logistic regression is a classification model that estimates the probability of belonging to a class. It applies a linear combination of features and then passes the result through the sigmoid function.\n\nLoss functions and optimization, Evaluation metrics, Overfitting, underfitting, and regularization: A loss function measures the difference between predictions and true labels. During training, the learning algorithm tries to minimize this loss so the model becomes more accurate. Different tasks require different evaluation metrics. Accuracy is intuitive but can be misleading for imbalanced classes. Overfitting occurs when a model performs very well on training data but poorly on new data. Underfitting occurs when the model is too simple to capture the core pattern even on the training set.\n\nBias-variance trade-off, Practical workflow for a study project, Final takeaway: Bias is the error caused by overly simple assumptions. Variance is the error caused by sensitivity to fluctuations in the training data. A sensible supervised learning workflow starts with the problem statement, then moves through data collection, preprocessing, baseline modeling, evaluation, error analysis, and iterative improvement. Supervised learning is not only about fitting a model. It is about preparing data carefully, choosing meaningful representations, evaluating with the right metrics, and making sure the final system generalizes.",
+    "section_notes": [
+      {
+        "section_title": "Supervised Learning Foundations and Model Evaluation",
+        "source_span": "Page 1",
+        "section_summary": "Learning goal: understand the end-to-end supervised learning workflow, from data representation to training, evaluation, and generalization.",
+        "important_points": []
+      },
+      {
+        "section_title": "What supervised learning solves",
+        "source_span": "Page 1",
+        "section_summary": "Supervised learning is a machine learning setting in which the training data contains both inputs and expected outputs.",
+        "important_points": [
+          "Regression predicts numeric values.",
+          "Classification predicts discrete labels.",
+          "A model is useful only if it generalizes beyond the training set.",
+          "The key idea is not memorization. The model should capture patterns that remain reliable on new data. Because of this, the quality of the data and the choice of evaluation protocol matter as much as the model itself."
+        ]
+      },
+      {
+        "section_title": "Features, labels, and datasets",
+        "source_span": "Page 1",
+        "section_summary": "Features are the measurable attributes used as inputs to the model. A label is the expected output attached to each example.",
+        "important_points": [
+          "Features are the measurable attributes used as inputs to the model. A label is the expected output attached to each example. In a medical dataset, age, blood pressure, and cholesterol may be features, while disease risk may be the label.",
+          "Important fact: labels must correspond to the task definition. If the labels are noisy, biased, or inconsistent, the model will learn those weaknesses as well.",
+          "Feature matrix: a table of input variables.",
+          "Target vector: the list of outputs linked to the rows of the feature matrix.",
+          "Data leakage: information that should not be available at prediction time but accidentally appears in training."
+        ]
+      },
+      {
+        "section_title": "Preprocessing and feature engineering",
+        "source_span": "Page 1",
+        "section_summary": "Raw data is rarely ready for learning. Numerical variables may need scaling, categorical variables may need encoding, and missing values may need imputation.",
+        "important_points": [
+          "Raw data is rarely ready for learning. Numerical variables may need scaling, categorical variables may need encoding, and missing values may need imputation. Preprocessing transforms raw observations into a representation the model can learn from consistently.",
+          "Definition: feature engineering is the process of creating, selecting, or transforming input variables so they carry useful predictive information.",
+          "Standardization rescales a variable so it has mean 0 and standard deviation 1.",
+          "One-hot encoding converts a category into a binary indicator representation.",
+          "Imputation replaces missing values using a rule such as mean, median, or a model-based estimate."
+        ]
+      },
+      {
+        "section_title": "Training, validation, and test data",
+        "source_span": "Page 1",
+        "section_summary": "The dataset is usually divided into training, validation, and test splits. The training split is used to fit the model parameters.",
+        "important_points": [
+          "The dataset is usually divided into training, validation, and test splits. The training split is used to fit the model parameters. The validation split is used to compare model settings and estimate generalization during development. The test split is reserved for the final unbiased evaluation.",
+          "Important rule: never tune the model on the test set.",
+          "Training split: used to learn parameters.",
+          "Validation split: used for model selection and hyperparameter tuning.",
+          "Test split: used once for final evaluation."
+        ]
+      },
+      {
+        "section_title": "Linear regression as a baseline",
+        "source_span": "Page 1",
+        "section_summary": "Linear regression models the target as a weighted sum of the input features plus an intercept term. It is often the first model students learn because the assumptions and the optimization objective are easy to explain.",
+        "important_points": [
+          "Formula: y_hat = w1x1 + w2x2 + ... + wnxn + b",
+          "The predicted value y_hat depends on feature weights. A positive weight means the target tends to increase as the feature increases, while a negative weight suggests the opposite relationship. Even when a more advanced model is later used, a linear baseline is valuable because it provides a reference point.",
+          "Linear regression models the target as a weighted sum of the input features plus an intercept term.",
+          "It is often the first model students learn because the assumptions and the optimization objective are easy to explain."
+        ]
+      },
+      {
+        "section_title": "Logistic regression for classification",
+        "source_span": "Page 1",
+        "section_summary": "Logistic regression is a classification model that estimates the probability of belonging to a class. It applies a linear combination of features and then passes the result through the sigmoid function.",
+        "important_points": [
+          "Formula: p = 1 / (1 + e^-z)",
+          "Here z is the weighted feature sum. The output p is interpreted as a probability between 0 and 1. A threshold such as 0.5 can be used to convert the probability into a class prediction.",
+          "Important fact: logistic regression is linear in the feature space, but probabilistic in the output space.",
+          "Logistic regression is a classification model that estimates the probability of belonging to a class."
+        ]
+      },
+      {
+        "section_title": "Loss functions and optimization",
+        "source_span": "Page 1",
+        "section_summary": "A loss function measures the difference between predictions and true labels. During training, the learning algorithm tries to minimize this loss so the model becomes more accurate.",
+        "important_points": [
+          "Definition: optimization is the process of adjusting model parameters to reduce the loss function.",
+          "Mean squared error is common in regression.",
+          "Cross-entropy loss is common in classification.",
+          "A lower loss indicates better agreement between predictions and targets."
+        ]
+      },
+      {
+        "section_title": "Evaluation metrics",
+        "source_span": "Page 1",
+        "section_summary": "Different tasks require different evaluation metrics. Accuracy is intuitive but can be misleading for imbalanced classes.",
+        "important_points": [
+          "Different tasks require different evaluation metrics. Accuracy is intuitive but can be misleading for imbalanced classes. Precision focuses on how many predicted positives are truly positive. Recall focuses on how many actual positives were successfully found.",
+          "Formula: Accuracy = (TP + TN) / Total",
+          "Formula: Precision = TP / (TP + FP)",
+          "Formula: Recall = TP / (TP + FN)",
+          "For classification, a confusion matrix summarizes counts of true positives, false positives, true negatives, and false negatives. For regression, common metrics include mean absolute error and root mean squared error."
+        ]
+      },
+      {
+        "section_title": "Overfitting, underfitting, and regularization",
+        "source_span": "Page 1",
+        "section_summary": "Overfitting occurs when a model performs very well on training data but poorly on new data. Underfitting occurs when the model is too simple to capture the core pattern even on the training set.",
+        "important_points": [
+          "Definition: regularization is a strategy that discourages overly complex models in order to improve generalization.",
+          "L1 regularization can encourage sparsity in the learned weights.",
+          "L2 regularization discourages very large parameter values.",
+          "Early stopping halts training when validation performance stops improving."
+        ]
+      },
+      {
+        "section_title": "Bias-variance trade-off",
+        "source_span": "Page 1",
+        "section_summary": "Bias is the error caused by overly simple assumptions. Variance is the error caused by sensitivity to fluctuations in the training data.",
+        "important_points": [
+          "Bias is the error caused by overly simple assumptions. Variance is the error caused by sensitivity to fluctuations in the training data. A high-bias model misses real structure, while a high-variance model reacts too strongly to noise.",
+          "Important fact: model selection is often the practical art of balancing bias and variance.",
+          "Cross-validation helps estimate how stable a model is across different data partitions. Instead of relying on one split, the data is repeatedly partitioned so the model is trained and evaluated several times.",
+          "Bias is the error caused by overly simple assumptions.",
+          "Variance is the error caused by sensitivity to fluctuations in the training data."
+        ]
+      },
+      {
+        "section_title": "Practical workflow for a study project",
+        "source_span": "Page 1",
+        "section_summary": "A sensible supervised learning workflow starts with the problem statement, then moves through data collection, preprocessing, baseline modeling, evaluation, error analysis, and iterative improvement.",
+        "important_points": [
+          "Define the task and target clearly.",
+          "Build a baseline before trying complex models.",
+          "Track metrics on validation data.",
+          "Inspect common errors and failure cases."
+        ]
+      },
+      {
+        "section_title": "Final takeaway",
+        "source_span": "Page 1",
+        "section_summary": "Supervised learning is not only about fitting a model. It is about preparing data carefully, choosing meaningful representations, evaluating with the right metrics, and making sure the final system generalizes.",
+        "important_points": [
+          "Supervised learning is not only about fitting a model. It is about preparing data carefully, choosing meaningful representations, evaluating with the right metrics, and making sure the final system generalizes. Strong results come from disciplined workflow, not from model complexity alone.",
+          "Supervised learning is not only about fitting a model.",
+          "It is about preparing data carefully, choosing meaningful representations, evaluating with the right metrics, and making sure the final system generalizes.",
+          "Strong results come from disciplined workflow, not from model complexity alone."
+        ]
+      }
+    ],
+    "topics": [
+      {
+        "topic_name": "What supervised learning solves",
+        "importance": "Supervised learning is a machine learning setting in which the training data contains both inputs and expected outputs.",
+        "key_terms": [
+          "What",
+          "Supervised",
+          "Learning",
+          "Solves",
+          "Machine",
+          "Setting"
+        ]
+      },
+      {
+        "topic_name": "Features, labels, and datasets",
+        "importance": "In a medical dataset, age, blood pressure, and cholesterol may be features, while disease risk may be the label.",
+        "key_terms": [
+          "Features",
+          "Labels",
+          "Datasets",
+          "Medical",
+          "Dataset",
+          "Blood"
+        ]
+      },
+      {
+        "topic_name": "Preprocessing and feature engineering",
+        "importance": "Definition: feature engineering is the process of creating, selecting, or transforming input variables so they carry useful predictive information.",
+        "key_terms": [
+          "Preprocessing",
+          "Feature",
+          "Engineering",
+          "Definition",
+          "Process",
+          "Creating"
+        ]
+      },
+      {
+        "topic_name": "Training, validation, and test data",
+        "importance": "The dataset is usually divided into training, validation, and test splits.",
+        "key_terms": [
+          "Training",
+          "Validation",
+          "Test",
+          "Data",
+          "Dataset",
+          "Usually"
+        ]
+      },
+      {
+        "topic_name": "Linear regression as a baseline",
+        "importance": "Even when a more advanced model is later used, a linear baseline is valuable because it provides a reference point.",
+        "key_terms": [
+          "Linear",
+          "Regression",
+          "Baseline",
+          "Even",
+          "Advanced",
+          "Model"
+        ]
+      },
+      {
+        "topic_name": "Logistic regression for classification",
+        "importance": "Logistic regression is a classification model that estimates the probability of belonging to a class.",
+        "key_terms": [
+          "Logistic",
+          "Regression",
+          "Classification",
+          "Model",
+          "Estimates",
+          "Probability"
+        ]
+      },
+      {
+        "topic_name": "Loss functions and optimization",
+        "importance": "Definition: optimization is the process of adjusting model parameters to reduce the loss function.",
+        "key_terms": [
+          "Loss",
+          "Functions",
+          "Optimization",
+          "Definition",
+          "Process",
+          "Adjusting"
+        ]
+      },
+      {
+        "topic_name": "Evaluation metrics",
+        "importance": "Different tasks require different evaluation metrics.",
+        "key_terms": [
+          "Evaluation",
+          "Metrics",
+          "Different",
+          "Tasks",
+          "Require"
+        ]
+      },
+      {
+        "topic_name": "Overfitting, underfitting, and regularization",
+        "importance": "Definition: regularization is a strategy that discourages overly complex models in order to improve generalization.",
+        "key_terms": [
+          "Overfitting",
+          "Underfitting",
+          "Regularization",
+          "Definition",
+          "Strategy",
+          "Discourages"
+        ]
+      },
+      {
+        "topic_name": "Bias-variance trade-off",
+        "importance": "Instead of relying on one split, the data is repeatedly partitioned so the model is trained and evaluated several times.",
+        "key_terms": [
+          "Bias-Variance",
+          "Trade-Off",
+          "Instead",
+          "Relying",
+          "Split",
+          "Data"
+        ]
+      },
+      {
+        "topic_name": "Practical workflow for a study project",
+        "importance": "This workflow makes the project easier to explain and defend because every design choice is linked to a clear purpose.",
+        "key_terms": [
+          "Practical",
+          "Workflow",
+          "Study",
+          "Project",
+          "Makes",
+          "Easier"
+        ]
+      },
+      {
+        "topic_name": "Final takeaway",
+        "importance": "It is about preparing data carefully, choosing meaningful representations, evaluating with the right metrics, and making sure the final system generalizes.",
+        "key_terms": [
+          "Final",
+          "Takeaway",
+          "Preparing",
+          "Data",
+          "Carefully",
+          "Choosing"
+        ]
+      }
+    ],
+    "definitions": [
+      {
+        "term": "Supervised learning",
+        "definition": "Supervised learning is a machine learning setting in which the training data contains both inputs and expected outputs. The model studies examples so it can map features to a target and later make predictions for unseen cases. In practice, the target may be continuous, such as house price, or categorical, such as spam versus not spam."
+      },
+      {
+        "term": "Features",
+        "definition": "Features are the measurable attributes used as inputs to the model. A label is the expected output attached to each example. In a medical dataset, age, blood pressure, and cholesterol may be features, while disease risk may be the label."
+      },
+      {
+        "term": "Feature matrix",
+        "definition": "Feature matrix: a table of input variables."
+      },
+      {
+        "term": "Target vector",
+        "definition": "Target vector: the list of outputs linked to the rows of the feature matrix."
+      },
+      {
+        "term": "Data leakage",
+        "definition": "Data leakage: information that should not be available at prediction time but accidentally appears in training."
+      },
+      {
+        "term": "Raw data",
+        "definition": "Raw data is rarely ready for learning. Numerical variables may need scaling, categorical variables may need encoding, and missing values may need imputation. Preprocessing transforms raw observations into a representation the model can learn from consistently."
+      },
+      {
+        "term": "Training split",
+        "definition": "Training split: used to learn parameters."
+      },
+      {
+        "term": "Validation split",
+        "definition": "Validation split: used for model selection and hyperparameter tuning."
+      },
+      {
+        "term": "Test split",
+        "definition": "Test split: used once for final evaluation."
+      },
+      {
+        "term": "Logistic regression",
+        "definition": "Logistic regression is a classification model that estimates the probability of belonging to a class. It applies a linear combination of features and then passes the result through the sigmoid function."
+      }
+    ],
+    "formulas_or_facts": [
+      {
+        "statement": "labels must correspond to the task definition. If the labels are noisy, biased, or inconsistent, the model will learn those weaknesses as well.",
+        "explanation": null
+      },
+      {
+        "statement": "Standardization rescales a variable so it has mean 0 and standard deviation 1.",
+        "explanation": null
+      },
+      {
+        "statement": "The dataset is usually divided into training, validation, and test splits. The training split is used to fit the model parameters. The validation split is used to compare model settings and estimate generalization during development. The test split is reserved for the final unbiased evaluation.",
+        "explanation": null
+      },
+      {
+        "statement": "y_hat = w1x1 + w2x2 + ... + wnxn + b",
+        "explanation": null
+      },
+      {
+        "statement": "Logistic regression is a classification model that estimates the probability of belonging to a class. It applies a linear combination of features and then passes the result through the sigmoid function.",
+        "explanation": null
+      },
+      {
+        "statement": "p = 1 / (1 + e^-z)",
+        "explanation": null
+      },
+      {
+        "statement": "Here z is the weighted feature sum. The output p is interpreted as a probability between 0 and 1. A threshold such as 0.5 can be used to convert the probability into a class prediction.",
+        "explanation": null
+      },
+      {
+        "statement": "A loss function measures the difference between predictions and true labels. During training, the learning algorithm tries to minimize this loss so the model becomes more accurate.",
+        "explanation": null
+      },
+      {
+        "statement": "optimization is the process of adjusting model parameters to reduce the loss function.",
+        "explanation": null
+      },
+      {
+        "statement": "Mean squared error is common in regression.",
+        "explanation": null
+      }
+    ],
+    "key_points": [
+      "understand the end-to-end supervised learning workflow, from data representation to training, evaluation, and generalization.",
+      "Regression predicts numeric values.",
+      "Classification predicts discrete labels.",
+      "Features are the measurable attributes used as inputs to the model.",
+      "Important fact: labels must correspond to the task definition. If the labels are noisy, biased, or inconsistent, the model will learn those weaknesses as well.",
+      "Raw data is rarely ready for learning.",
+      "Definition: feature engineering is the process of creating, selecting, or transforming input variables so they carry useful predictive information.",
+      "The dataset is usually divided into training, validation, and test splits.",
+      "Important rule: never tune the model on the test set.",
+      "Formula: y_hat = w1x1 + w2x2 + ... + wnxn + b",
+      "The predicted value y_hat depends on feature weights.",
+      "Formula: p = 1 / (1 + e^-z)",
+      "Here z is the weighted feature sum. The output p is interpreted as a probability between 0 and 1. A threshold such as 0.5 can be used to convert the probability into a class prediction.",
+      "Definition: optimization is the process of adjusting model parameters to reduce the loss function.",
+      "Mean squared error is common in regression.",
+      "Different tasks require different evaluation metrics."
+    ],
+    "quiz": [
+      {
+        "question": "What best describes the main goal of Supervised Learning Foundations and Model Evaluation?",
+        "options": [
+          "understand the end-to-end supervised learning workflow, from data representation to training, evaluation, and generalization.",
+          "Learning goal: understand the end-to-end supervised learning workflow, from data representation to training, evaluation, and generalization.",
+          "Supervised learning is a machine learning setting in which the training data contains both inputs and expected outputs. The model studies examples so it can map features to a target and later make predictions for unseen cases.",
+          "Features are the measurable attributes used as inputs to the model. A label is the expected output attached to each example."
+        ],
+        "correct_answer": "A",
+        "explanation": "The correct answer reflects the overall goal developed across the full lecture."
+      },
+      {
+        "question": "Which statement best captures the section on Supervised Learning Foundations and Model Evaluation?",
+        "options": [
+          "Supervised learning is a machine learning setting in which the training data contains both inputs and expected outputs. The model studies examples so it can map features to a target and later make predictions for unseen cases.",
+          "Learning goal: understand the end-to-end supervised learning workflow, from data representation to training, evaluation, and generalization.",
+          "Features are the measurable attributes used as inputs to the model. A label is the expected output attached to each example.",
+          "Raw data is rarely ready for learning. Numerical variables may need scaling, categorical variables may need encoding, and missing values may need imputation."
+        ],
+        "correct_answer": "B",
+        "explanation": "The correct answer summarizes the main idea from that section of the lecture."
+      },
+      {
+        "question": "Which statement best captures the section on Preprocessing and feature engineering?",
+        "options": [
+          "Learning goal: understand the end-to-end supervised learning workflow, from data representation to training, evaluation, and generalization.",
+          "Supervised learning is a machine learning setting in which the training data contains both inputs and expected outputs. The model studies examples so it can map features to a target and later make predictions for unseen cases.",
+          "Raw data is rarely ready for learning. Numerical variables may need scaling, categorical variables may need encoding, and missing values may need imputation.",
+          "Features are the measurable attributes used as inputs to the model. A label is the expected output attached to each example."
+        ],
+        "correct_answer": "C",
+        "explanation": "The correct answer summarizes the main idea from that section of the lecture."
+      },
+      {
+        "question": "Which statement best captures the section on Logistic regression for classification?",
+        "options": [
+          "Learning goal: understand the end-to-end supervised learning workflow, from data representation to training, evaluation, and generalization.",
+          "Supervised learning is a machine learning setting in which the training data contains both inputs and expected outputs. The model studies examples so it can map features to a target and later make predictions for unseen cases.",
+          "Features are the measurable attributes used as inputs to the model. A label is the expected output attached to each example.",
+          "Logistic regression is a classification model that estimates the probability of belonging to a class. It applies a linear combination of features and then passes the result through the sigmoid function."
+        ],
+        "correct_answer": "D",
+        "explanation": "The correct answer summarizes the main idea from that section of the lecture."
+      },
+      {
+        "question": "Which statement best captures the section on Overfitting, underfitting, and regularization?",
+        "options": [
+          "Overfitting occurs when a model performs very well on training data but poorly on new data. Underfitting occurs when the model is too simple to capture the core pattern even on the training set.",
+          "Learning goal: understand the end-to-end supervised learning workflow, from data representation to training, evaluation, and generalization.",
+          "Supervised learning is a machine learning setting in which the training data contains both inputs and expected outputs. The model studies examples so it can map features to a target and later make predictions for unseen cases.",
+          "Features are the measurable attributes used as inputs to the model. A label is the expected output attached to each example."
+        ],
+        "correct_answer": "A",
+        "explanation": "The correct answer summarizes the main idea from that section of the lecture."
+      },
+      {
+        "question": "Which statement best captures the section on Final takeaway?",
+        "options": [
+          "Learning goal: understand the end-to-end supervised learning workflow, from data representation to training, evaluation, and generalization.",
+          "Supervised learning is not only about fitting a model. It is about preparing data carefully, choosing meaningful representations, evaluating with the right metrics, and making sure the final system generalizes.",
+          "Supervised learning is a machine learning setting in which the training data contains both inputs and expected outputs. The model studies examples so it can map features to a target and later make predictions for unseen cases.",
+          "Features are the measurable attributes used as inputs to the model. A label is the expected output attached to each example."
+        ],
+        "correct_answer": "B",
+        "explanation": "The correct answer summarizes the main idea from that section of the lecture."
+      },
+      {
+        "question": "Which option best defines Supervised learning?",
+        "options": [
+          "Features are the measurable attributes used as inputs to the model. A label is the expected output attached to each example. In a medical dataset, age, blood pressure, and cholesterol may be features, while disease risk may be the label.",
+          "Feature matrix: a table of input variables.",
+          "Supervised learning is a machine learning setting in which the training data contains both inputs and expected outputs. The model studies examples so it can map features to a target and later make predictions for unseen cases. In practice, the target may be continuous, such as house price, or categorical, such as spam versus not spam.",
+          "Target vector: the list of outputs linked to the rows of the feature matrix."
+        ],
+        "correct_answer": "C",
+        "explanation": "The correct answer matches the definition of Supervised learning presented in the notes."
+      },
+      {
+        "question": "Which option best defines Logistic regression?",
+        "options": [
+          "Supervised learning is a machine learning setting in which the training data contains both inputs and expected outputs. The model studies examples so it can map features to a target and later make predictions for unseen cases. In practice, the target may be continuous, such as house price, or categorical, such as spam versus not spam.",
+          "Features are the measurable attributes used as inputs to the model. A label is the expected output attached to each example. In a medical dataset, age, blood pressure, and cholesterol may be features, while disease risk may be the label.",
+          "Feature matrix: a table of input variables.",
+          "Logistic regression is a classification model that estimates the probability of belonging to a class. It applies a linear combination of features and then passes the result through the sigmoid function."
+        ],
+        "correct_answer": "D",
+        "explanation": "The correct answer matches the definition of Logistic regression presented in the notes."
+      },
+      {
+        "question": "Which option matches an important formula or factual statement from the lecture?",
+        "options": [
+          "Standardization rescales a variable so it has mean 0 and standard deviation 1.",
+          "The dataset is usually divided into training, validation, and test splits. The training split is used to fit the model parameters. The validation split is used to compare model settings and estimate generalization during development. The test split is reserved for the final unbiased evaluation.",
+          "y_hat = w1x1 + w2x2 + ... + wnxn + b",
+          "labels must correspond to the task definition. If the labels are noisy, biased, or inconsistent, the model will learn those weaknesses as well."
+        ],
+        "correct_answer": "D",
+        "explanation": "The correct answer is a formula or factual statement explicitly highlighted in the lecture."
+      },
+      {
+        "question": "Why is What supervised learning solves important in this lecture?",
+        "options": [
+          "Supervised learning is a machine learning setting in which the training data contains both inputs and expected outputs.",
+          "In a medical dataset, age, blood pressure, and cholesterol may be features, while disease risk may be the label.",
+          "Definition: feature engineering is the process of creating, selecting, or transforming input variables so they carry useful predictive information.",
+          "The dataset is usually divided into training, validation, and test splits."
+        ],
+        "correct_answer": "A",
+        "explanation": "The correct answer explains the role of What supervised learning solves in the overall lecture."
+      }
+    ]
+  }
 }
