@@ -1,16 +1,23 @@
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 import os
 import re
+import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from functools import wraps
 from math import ceil
 from pathlib import Path
-from typing import Protocol, TypeVar
+from typing import Callable, Protocol, TypeVar
+from typing import TypeVar as TV
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from pypdf import PdfReader
+from tqdm import tqdm
 
 from prompts import (
     CHUNK_ANALYSIS_SYSTEM_PROMPT,
@@ -34,6 +41,10 @@ from schemas import (
     SummaryMode,
     TopicInfo,
 )
+
+# Configure logging
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())  # Use parent handler unless configured
 
 SUPPORTED_EXTENSIONS = {".txt", ".md", ".pdf"}
 ANSWER_LABELS = ("A", "B", "C", "D")
@@ -120,6 +131,120 @@ GENERIC_DISTRACTORS = [
 ]
 
 
+def retry_with_backoff(
+    max_retries: int = 3,
+    base_delay: float = 1.0,
+    max_delay: float = 30.0,
+    exponential_base: float = 2.0,
+) -> Callable:
+    """
+    Decorator for retrying a function with exponential backoff.
+
+    Args:
+        max_retries: Maximum number of retry attempts
+        base_delay: Initial delay in seconds
+        max_delay: Maximum delay between retries
+        exponential_base: Base for exponential backoff calculation
+    """
+
+    def decorator(func: Callable[..., TV]) -> Callable[..., TV]:
+        @wraps(func)
+        def wrapper(*args, **kwargs) -> TV:
+            last_exception = None
+            for attempt in range(max_retries + 1):
+                try:
+                    if attempt > 0:
+                        delay = min(
+                            base_delay * (exponential_base ** (attempt - 1)), max_delay
+                        )
+                        logger.warning(
+                            f"Retry attempt {attempt}/{max_retries} for {func.__name__} "
+                            f"(waiting {delay:.1f}s)"
+                        )
+                        time.sleep(delay)
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    last_exception = e
+                    logger.debug(
+                        f"Attempt {attempt + 1} failed for {func.__name__}: {str(e)}"
+                    )
+                    if attempt == max_retries:
+                        break
+
+            logger.error(
+                f"Failed to execute {func.__name__} after {max_retries + 1} attempts: "
+                f"{str(last_exception)}"
+            )
+            raise last_exception
+
+        return wrapper
+
+    return decorator
+
+
+def analyze_chunks_parallel(
+    llm_client: "StudyCoachLLM",
+    chunks: list["LectureChunk"],
+    summary_mode: "SummaryMode",
+    document_title: str,
+    max_workers: int = 4,
+) -> list[ChunkAnalysis]:
+    """
+    Analyze multiple chunks in parallel using ThreadPoolExecutor.
+
+    Args:
+        llm_client: The LLM client for analysis
+        chunks: List of chunks to analyze
+        summary_mode: Summary mode setting
+        document_title: Title of the document
+        max_workers: Maximum number of worker threads
+
+    Returns:
+        List of chunk analyses in original order
+    """
+    logger.info(
+        f"Starting parallel analysis of {len(chunks)} chunks with {max_workers} workers"
+    )
+
+    def analyze_single_chunk(chunk: "LectureChunk") -> tuple[int, ChunkAnalysis]:
+        """Analyze single chunk and return (index, analysis) for ordering."""
+        logger.debug(f"Analyzing chunk {chunk.chunk_id}: {chunk.title_hint}")
+        try:
+            analysis = llm_client.analyze_chunk(
+                chunk=chunk,
+                summary_mode=summary_mode,
+                document_title=document_title,
+            )
+            logger.debug(f"Successfully analyzed chunk {chunk.chunk_id}")
+            return chunk.chunk_id, analysis
+        except Exception as e:
+            logger.error(f"Failed to analyze chunk {chunk.chunk_id}: {str(e)}")
+            raise
+
+    analyses_dict: dict[int, ChunkAnalysis] = {}
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(analyze_single_chunk, chunk): chunk.chunk_id
+            for chunk in chunks
+        }
+
+        with tqdm(total=len(chunks), desc="Analyzing chunks", unit="chunk") as pbar:
+            for future in futures:
+                try:
+                    chunk_id, analysis = future.result()
+                    analyses_dict[chunk_id] = analysis
+                    pbar.update(1)
+                except Exception as e:
+                    logger.error(f"Chunk analysis failed: {str(e)}")
+                    raise
+
+    # Return analyses in original chunk order
+    ordered_analyses = [analyses_dict[chunk.chunk_id] for chunk in chunks]
+    logger.info(f"Completed analysis of all {len(chunks)} chunks")
+    return ordered_analyses
+
+
 @dataclass(frozen=True)
 class ModeSettings:
     chunk_char_limit: int
@@ -187,8 +312,10 @@ class OpenAIStudyCoachLLM:
     provider_name = "openai"
 
     def __init__(self, model_name: str) -> None:
+        logger.info(f"Initializing OpenAI LLM with model: {model_name}")
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
+            logger.error("OPENAI_API_KEY not found in environment")
             raise ValueError(
                 "OPENAI_API_KEY is not set. Use --provider mock or add the key to your environment."
             )
@@ -207,30 +334,43 @@ class OpenAIStudyCoachLLM:
             ]
         )
 
-        self._chunk_chain = chunk_prompt | chat_model.with_structured_output(ChunkAnalysis)
-        self._final_chain = final_prompt | chat_model.with_structured_output(StudyMaterial)
+        self._chunk_chain = chunk_prompt | chat_model.with_structured_output(
+            ChunkAnalysis
+        )
+        self._final_chain = final_prompt | chat_model.with_structured_output(
+            StudyMaterial
+        )
+        logger.info("OpenAI LLM initialized successfully")
 
+    @retry_with_backoff(max_retries=3, base_delay=1.0, max_delay=30.0)
     def analyze_chunk(
         self, chunk: LectureChunk, summary_mode: SummaryMode, document_title: str
     ) -> ChunkAnalysis:
-        result = self._chunk_chain.invoke(
-            {
-                "document_title": document_title,
-                "summary_mode": summary_mode.value,
-                "mode_instructions": build_mode_instructions(summary_mode),
-                "chunk_id": chunk.chunk_id,
-                "source_span": format_source_span(chunk.start_page, chunk.end_page),
-                "title_hint": chunk.title_hint,
-                "chunk_text": chunk.text,
-            }
-        )
-        return result.model_copy(
-            update={
-                "chunk_id": chunk.chunk_id,
-                "source_span": format_source_span(chunk.start_page, chunk.end_page),
-            }
-        )
+        logger.debug(f"Analyzing chunk {chunk.chunk_id} (words: {chunk.word_count})")
+        try:
+            result = self._chunk_chain.invoke(
+                {
+                    "document_title": document_title,
+                    "summary_mode": summary_mode.value,
+                    "mode_instructions": build_mode_instructions(summary_mode),
+                    "chunk_id": chunk.chunk_id,
+                    "source_span": format_source_span(chunk.start_page, chunk.end_page),
+                    "title_hint": chunk.title_hint,
+                    "chunk_text": chunk.text,
+                }
+            )
+            logger.debug(f"Successfully analyzed chunk {chunk.chunk_id}")
+            return result.model_copy(
+                update={
+                    "chunk_id": chunk.chunk_id,
+                    "source_span": format_source_span(chunk.start_page, chunk.end_page),
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error analyzing chunk {chunk.chunk_id}: {str(e)}")
+            raise
 
+    @retry_with_backoff(max_retries=2, base_delay=2.0, max_delay=30.0)
     def generate_study_material(
         self,
         document: LectureDocument,
@@ -239,16 +379,23 @@ class OpenAIStudyCoachLLM:
         summary_mode: SummaryMode,
         quiz_count: int,
     ) -> StudyMaterial:
-        return self._final_chain.invoke(
-            {
-                "summary_mode": summary_mode.value,
-                "mode_instructions": build_mode_instructions(summary_mode),
-                "quiz_count": quiz_count,
-                "document_metadata_json": _serialize_document_context(document),
-                "analysis_json": analysis.model_dump_json(indent=2),
-                "chunk_analyses_json": _serialize_chunk_analyses(chunk_analyses),
-            }
-        )
+        logger.info(f"Generating study material with {quiz_count} quiz questions")
+        try:
+            result = self._final_chain.invoke(
+                {
+                    "summary_mode": summary_mode.value,
+                    "mode_instructions": build_mode_instructions(summary_mode),
+                    "quiz_count": quiz_count,
+                    "document_metadata_json": _serialize_document_context(document),
+                    "analysis_json": analysis.model_dump_json(indent=2),
+                    "chunk_analyses_json": _serialize_chunk_analyses(chunk_analyses),
+                }
+            )
+            logger.info("Study material generated successfully")
+            return result
+        except Exception as e:
+            logger.error(f"Error generating study material: {str(e)}")
+            raise
 
 
 class MockStudyCoachLLM:
@@ -382,7 +529,11 @@ def list_input_files(directory: Path) -> list[Path]:
     if not directory.exists():
         return []
     return sorted(
-        [path for path in directory.iterdir() if path.is_file() and path.suffix.lower() in SUPPORTED_EXTENSIONS],
+        [
+            path
+            for path in directory.iterdir()
+            if path.is_file() and path.suffix.lower() in SUPPORTED_EXTENSIONS
+        ],
         key=lambda path: (path.suffix.lower(), path.name.lower()),
     )
 
@@ -390,48 +541,112 @@ def list_input_files(directory: Path) -> list[Path]:
 def read_lecture_document(input_path: str) -> LectureDocument:
     path = Path(input_path)
     if not path.exists():
+        logger.error(f"Input file not found: {path}")
         raise FileNotFoundError(f"Input file not found: {path}")
 
     extension = path.suffix.lower()
     if extension not in SUPPORTED_EXTENSIONS:
+        logger.error(f"Unsupported file type: {extension}")
         raise ValueError(
             f"Unsupported file type: {extension}. Supported types: {', '.join(sorted(SUPPORTED_EXTENSIONS))}"
         )
 
-    if extension in {".txt", ".md"}:
-        text = _read_text_file(path)
-        normalized = _normalize_extracted_text(text)
-        page = DocumentPage(
-            page_number=1,
-            text=normalized,
-            block_count=len(_split_blocks(normalized)),
-            word_count=_count_words(normalized),
+    # Validate file size
+    file_size_bytes = path.stat().st_size
+    file_size_mb = file_size_bytes / (1024 * 1024)
+    max_file_size_mb = 50
+
+    if file_size_mb > max_file_size_mb:
+        logger.warning(
+            f"Large file detected: {file_size_mb:.1f}MB (max recommended: {max_file_size_mb}MB). "
+            f"Processing may be slow."
         )
-        pages = [page]
-        total_pages = 1
-    else:
-        reader = PdfReader(str(path))
-        pages = []
-        for page_number, page in enumerate(reader.pages, start=1):
-            extracted = _extract_pdf_page_text(page)
-            normalized = _normalize_extracted_text(extracted)
-            pages.append(
-                DocumentPage(
-                    page_number=page_number,
-                    text=normalized,
-                    block_count=len(_split_blocks(normalized)),
-                    word_count=_count_words(normalized),
+    logger.info(f"Reading lecture document: {path.name} ({file_size_mb:.1f}MB)")
+
+    try:
+        if extension in {".txt", ".md"}:
+            logger.debug(f"Reading text file: {extension} format")
+            try:
+                text = _read_text_file(path)
+                logger.debug(f"Successfully read text file ({len(text)} characters)")
+            except UnicodeDecodeError as e:
+                logger.error(f"Failed to decode text file (encoding issue): {str(e)}")
+                raise ValueError(
+                    f"Failed to read file - encoding error. Try saving as UTF-8. Details: {str(e)}"
                 )
+            except Exception as e:
+                logger.error(f"Failed to read text file: {str(e)}")
+                raise
+
+            normalized = _normalize_extracted_text(text)
+            page = DocumentPage(
+                page_number=1,
+                text=normalized,
+                block_count=len(_split_blocks(normalized)),
+                word_count=_count_words(normalized),
             )
-        total_pages = len(reader.pages)
+            pages = [page]
+            total_pages = 1
+        else:
+            logger.debug(f"Reading PDF file with {file_size_mb:.1f}MB size")
+            try:
+                reader = PdfReader(str(path))
+                logger.debug(f"PDF loaded: {len(reader.pages)} pages")
+            except Exception as e:
+                logger.error(f"Failed to read PDF file: {str(e)}")
+                raise ValueError(
+                    f"Failed to read PDF file - the file may be corrupted or encrypted. Details: {str(e)}"
+                )
+
+            pages = []
+            for page_number, page in enumerate(reader.pages, start=1):
+                try:
+                    extracted = _extract_pdf_page_text(page)
+                    normalized = _normalize_extracted_text(extracted)
+                    pages.append(
+                        DocumentPage(
+                            page_number=page_number,
+                            text=normalized,
+                            block_count=len(_split_blocks(normalized)),
+                            word_count=_count_words(normalized),
+                        )
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to extract text from PDF page {page_number}: {str(e)}"
+                    )
+                    # Continue with other pages instead of failing completely
+                    continue
+
+            if not pages:
+                logger.error(f"No pages could be extracted from PDF: {path}")
+                raise ValueError(
+                    f"No readable content could be extracted from PDF: {path}"
+                )
+
+            total_pages = len(reader.pages)
+            logger.debug(f"Successfully extracted {len(pages)} pages from PDF")
+    except ValueError:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error reading document: {str(e)}")
+        raise ValueError(f"Failed to read document: {str(e)}")
 
     raw_text = "\n\n".join(page.text for page in pages if page.text.strip())
-    title_hint = _detect_title_hint(pages, fallback=path.stem.replace("_", " ").replace("-", " "))
+    title_hint = _detect_title_hint(
+        pages, fallback=path.stem.replace("_", " ").replace("-", " ")
+    )
     goal_hint = _detect_goal_hint(raw_text)
     total_words = sum(page.word_count for page in pages)
 
     if not raw_text.strip():
+        logger.error(f"No readable content found in {path}")
         raise ValueError(f"No readable content found in {path}")
+
+    logger.info(
+        f"Document loaded successfully: {total_words} words, {total_pages} pages, "
+        f"title='{title_hint}'"
+    )
 
     return LectureDocument(
         source_path=str(path),
@@ -445,7 +660,9 @@ def read_lecture_document(input_path: str) -> LectureDocument:
     )
 
 
-def build_chunks(document: LectureDocument, summary_mode: SummaryMode) -> list[LectureChunk]:
+def build_chunks(
+    document: LectureDocument, summary_mode: SummaryMode
+) -> list[LectureChunk]:
     settings = get_mode_settings(summary_mode)
     blocks: list[tuple[int, str]] = []
     for page in document.pages:
@@ -477,7 +694,9 @@ def build_chunks(document: LectureDocument, summary_mode: SummaryMode) -> list[L
         if not current_blocks:
             return
         chunk_text = "\n\n".join(current_blocks).strip()
-        title_hint = _guess_chunk_title(chunk_text, fallback=current_title or document.title_hint)
+        title_hint = _guess_chunk_title(
+            chunk_text, fallback=current_title or document.title_hint
+        )
         chunks.append(
             LectureChunk(
                 chunk_id=chunk_id,
@@ -523,16 +742,24 @@ def aggregate_chunk_analyses(
     settings = get_mode_settings(summary_mode)
     topics = _merge_topics(chunk_analyses, limit=settings.target_topics)
     definitions = _merge_definitions(chunk_analyses, limit=settings.target_definitions)
-    formulas_or_facts = _merge_formulas_or_facts(chunk_analyses, limit=settings.target_facts)
+    formulas_or_facts = _merge_formulas_or_facts(
+        chunk_analyses, limit=settings.target_facts
+    )
     coverage_summary = _dedupe_text(
         [analysis.main_idea for analysis in chunk_analyses if analysis.main_idea]
     )[: max(settings.target_sections, 4)]
     section_titles = _dedupe_text(
-        [analysis.section_title for analysis in chunk_analyses if analysis.section_title]
+        [
+            analysis.section_title
+            for analysis in chunk_analyses
+            if analysis.section_title
+        ]
     )[: max(settings.target_sections, 4)]
     subject = document.title_hint.strip() or "Lecture Notes"
     main_goal = document.goal_hint or (
-        coverage_summary[0] if coverage_summary else f"Understand the main ideas of {subject}."
+        coverage_summary[0]
+        if coverage_summary
+        else f"Understand the main ideas of {subject}."
     )
 
     filtered_topics = [
@@ -600,7 +827,11 @@ def _extract_topics_from_chunk(
     for block in _split_blocks(text):
         if _is_heading_block(block):
             candidate = _clean_heading(block)
-            if candidate and candidate.lower() != fallback_subject.lower() and candidate not in candidates:
+            if (
+                candidate
+                and candidate.lower() != fallback_subject.lower()
+                and candidate not in candidates
+            ):
                 candidates.append(candidate)
         elif _is_list_item(block):
             candidate = _clean_list_item(block)
@@ -613,7 +844,11 @@ def _extract_topics_from_chunk(
         if len(candidates) >= limit:
             break
 
-    if normalized_title and normalized_title.lower() == fallback_subject.lower() and normalized_title not in candidates:
+    if (
+        normalized_title
+        and normalized_title.lower() == fallback_subject.lower()
+        and normalized_title not in candidates
+    ):
         candidates.append(normalized_title)
 
     if not candidates:
@@ -636,12 +871,16 @@ def _extract_topics_from_chunk(
     for candidate in candidates[:limit]:
         importance = _best_sentence_for_phrase(candidate, content_text)
         if not importance or importance == candidate:
-            importance = f"{candidate} is one of the important ideas developed in this section."
+            importance = (
+                f"{candidate} is one of the important ideas developed in this section."
+            )
         topics.append(
             TopicInfo(
                 topic_name=candidate,
                 importance=importance,
-                key_terms=_extract_key_terms_from_text(f"{candidate}. {importance}", limit=6),
+                key_terms=_extract_key_terms_from_text(
+                    f"{candidate}. {importance}", limit=6
+                ),
             )
         )
     return topics
@@ -654,10 +893,15 @@ def _best_sentence_for_phrase(phrase: str, text: str) -> str:
     for sentence in _split_sentences(text):
         lowered = sentence.lower()
         score = sum(word in lowered for word in phrase_words)
-        if score > best_score or (score == best_score and len(sentence) > len(best_sentence)):
+        if score > best_score or (
+            score == best_score and len(sentence) > len(best_sentence)
+        ):
             best_sentence = sentence
             best_score = score
-    return best_sentence.strip() or f"{phrase} is one of the important ideas in this section."
+    return (
+        best_sentence.strip()
+        or f"{phrase} is one of the important ideas in this section."
+    )
 
 
 def _extract_key_terms_from_text(text: str, limit: int) -> list[str]:
@@ -724,7 +968,11 @@ def _extract_key_points_from_text(text: str, limit: int) -> list[str]:
     for block in _split_blocks(text):
         if _is_heading_block(block):
             continue
-        cleaned = _clean_list_item(block) if _is_list_item(block) else _normalize_inline_text(block)
+        cleaned = (
+            _clean_list_item(block)
+            if _is_list_item(block)
+            else _normalize_inline_text(block)
+        )
         if cleaned and not _is_noise_point(cleaned) and cleaned not in points:
             points.append(cleaned)
         if len(points) >= limit:
@@ -768,7 +1016,9 @@ def _merge_topics(chunk_analyses: list[ChunkAnalysis], limit: int) -> list[Topic
     return [merged[key] for key in order[:limit]]
 
 
-def _merge_definitions(chunk_analyses: list[ChunkAnalysis], limit: int) -> list[DefinitionItem]:
+def _merge_definitions(
+    chunk_analyses: list[ChunkAnalysis], limit: int
+) -> list[DefinitionItem]:
     merged: dict[str, DefinitionItem] = {}
     order: list[str] = []
     for analysis in chunk_analyses:
@@ -790,7 +1040,9 @@ def _merge_formulas_or_facts(
     for analysis in chunk_analyses:
         for item in analysis.formulas_or_facts:
             key = item.statement.lower()
-            if any(key in existing_key or existing_key in key for existing_key in merged):
+            if any(
+                key in existing_key or existing_key in key for existing_key in merged
+            ):
                 continue
             if key not in merged:
                 merged[key] = item
@@ -813,7 +1065,9 @@ def export_results(
         exported_json_path = Path(json_output_path)
         exported_json_path.parent.mkdir(parents=True, exist_ok=True)
         run_output = StudyRunOutput(coverage=coverage, study_material=study_material)
-        exported_json_path.write_text(run_output.model_dump_json(indent=2), encoding="utf-8")
+        exported_json_path.write_text(
+            run_output.model_dump_json(indent=2), encoding="utf-8"
+        )
 
     return report_path, exported_json_path
 
@@ -873,7 +1127,9 @@ def _simple_section(title: str, content: str) -> str:
 def _render_conspect(overview: str, section_notes: list[SectionNote]) -> str:
     lines = ["## Structured Lecture Notes / Conspect", ""]
     overview_text = overview.strip() if overview else "No overview was generated."
-    paragraphs = [part.strip() for part in re.split(r"\n\s*\n", overview_text) if part.strip()]
+    paragraphs = [
+        part.strip() for part in re.split(r"\n\s*\n", overview_text) if part.strip()
+    ]
     if paragraphs:
         lines.append("### Lecture Overview")
         lines.append("")
@@ -931,7 +1187,9 @@ def _render_definitions(definitions: list[DefinitionItem]) -> str:
         return "\n".join(lines)
 
     for item in definitions:
-        lines.append(f"- **{item.term}**: {_trim_definition_text(item.term, item.definition)}")
+        lines.append(
+            f"- **{item.term}**: {_trim_definition_text(item.term, item.definition)}"
+        )
     return "\n".join(lines)
 
 
@@ -1081,7 +1339,11 @@ def _is_heading_block(block: str) -> bool:
         return False
     if stripped.startswith("#"):
         return True
-    if _is_list_item(stripped) or _is_label_line(stripped) or _looks_like_formula(stripped):
+    if (
+        _is_list_item(stripped)
+        or _is_label_line(stripped)
+        or _looks_like_formula(stripped)
+    ):
         return False
 
     plain = _clean_heading(stripped)
@@ -1143,7 +1405,9 @@ def _is_list_item(line: str) -> bool:
 
 
 def _clean_list_item(line: str) -> str:
-    return _normalize_inline_text(re.sub(r"^(?:[-*•]\s+|\d+[.)]\s+|[A-D][.)]\s+)", "", line.strip()))
+    return _normalize_inline_text(
+        re.sub(r"^(?:[-*•]\s+|\d+[.)]\s+|[A-D][.)]\s+)", "", line.strip())
+    )
 
 
 def _is_label_line(line: str) -> bool:
@@ -1211,7 +1475,9 @@ def _extract_definition_candidate(text: str) -> tuple[str, str] | None:
     if not cleaned or _is_heading_block(cleaned):
         return None
 
-    colon_match = re.match(r"^([A-Z][A-Za-z0-9()\/\-]*(?:\s+[A-Za-z0-9()\/\-]+){0,5})\s*:\s*(.+)$", cleaned)
+    colon_match = re.match(
+        r"^([A-Z][A-Za-z0-9()\/\-]*(?:\s+[A-Za-z0-9()\/\-]+){0,5})\s*:\s*(.+)$", cleaned
+    )
     if colon_match:
         term = colon_match.group(1).strip()
         definition = cleaned
@@ -1232,7 +1498,9 @@ def _extract_definition_candidate(text: str) -> tuple[str, str] | None:
 
 
 def _extract_fact_candidate(text: str) -> str | None:
-    cleaned = _clean_list_item(text) if _is_list_item(text) else _normalize_inline_text(text)
+    cleaned = (
+        _clean_list_item(text) if _is_list_item(text) else _normalize_inline_text(text)
+    )
     if not cleaned or _is_heading_block(cleaned):
         return None
 
@@ -1264,10 +1532,23 @@ def _is_valid_term(term: str) -> bool:
         "the key idea",
     }:
         return False
-    if lowered.startswith(("if ", "examples", "important rule", "important fact", "the key idea")):
+    if lowered.startswith(
+        ("if ", "examples", "important rule", "important fact", "the key idea")
+    ):
         return False
     first_word = lowered.split()[0]
-    if first_word in {"a", "an", "the", "this", "that", "these", "those", "if", "here", "even"}:
+    if first_word in {
+        "a",
+        "an",
+        "the",
+        "this",
+        "that",
+        "these",
+        "those",
+        "if",
+        "here",
+        "even",
+    }:
         return False
     return bool(re.search(r"[A-Za-z]", term))
 
@@ -1285,7 +1566,12 @@ def _extract_content_blocks(text: str) -> list[str]:
 
 
 def _strip_fact_prefix(text: str) -> str:
-    return re.sub(r"^(formula|important fact|fact|rule|definition)\s*:\s*", "", text, flags=re.IGNORECASE)
+    return re.sub(
+        r"^(formula|important fact|fact|rule|definition)\s*:\s*",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    )
 
 
 def _is_noise_point(text: str) -> bool:
@@ -1294,7 +1580,13 @@ def _is_noise_point(text: str) -> bool:
         return True
     if re.match(r"^[A-Za-z][A-Za-z\s]+:\s*$", cleaned):
         return True
-    return cleaned.lower() in {"examples", "example", "formula", "definition", "important fact"}
+    return cleaned.lower() in {
+        "examples",
+        "example",
+        "formula",
+        "definition",
+        "important fact",
+    }
 
 
 def _build_section_notes(
@@ -1304,14 +1596,20 @@ def _build_section_notes(
         return []
 
     sections: list[SectionNote] = []
-    for group in _partition_evenly(chunk_analyses, min(target_sections, len(chunk_analyses))):
+    for group in _partition_evenly(
+        chunk_analyses, min(target_sections, len(chunk_analyses))
+    ):
         first = group[0]
         last = group[-1]
         title = first.section_title
         if len(group) > 1 and first.section_title != last.section_title:
             title = f"{first.section_title} to {last.section_title}"
         summary_sentences = _dedupe_text(
-            [_compact_sentence(analysis.main_idea) for analysis in group if analysis.main_idea]
+            [
+                _compact_sentence(analysis.main_idea)
+                for analysis in group
+                if analysis.main_idea
+            ]
         )[:3]
         section_summary = " ".join(summary_sentences)
         raw_points = [point for analysis in group for point in analysis.key_points]
@@ -1320,9 +1618,8 @@ def _build_section_notes(
                 point
                 for point in raw_points
                 if not _is_noise_point(point)
-                and _compact_sentence(point) not in {
-                    _compact_sentence(summary) for summary in summary_sentences
-                }
+                and _compact_sentence(point)
+                not in {_compact_sentence(summary) for summary in summary_sentences}
             ]
         )[:5]
         sections.append(
@@ -1338,7 +1635,9 @@ def _build_section_notes(
 
 
 def _merge_source_spans(start_span: str, end_span: str) -> str:
-    page_numbers = [int(number) for number in re.findall(r"\d+", f"{start_span} {end_span}")]
+    page_numbers = [
+        int(number) for number in re.findall(r"\d+", f"{start_span} {end_span}")
+    ]
     if not page_numbers:
         return start_span
     return format_source_span(min(page_numbers), max(page_numbers))
@@ -1352,8 +1651,13 @@ def _build_final_key_points(
 ) -> list[str]:
     points = [_compact_sentence(main_goal)]
     for section in section_notes:
-        points.extend(_compact_sentence(point) for point in section.important_points[:2])
-    points.extend(_compact_sentence(item.statement) for item in formulas_or_facts[: max(2, limit // 4)])
+        points.extend(
+            _compact_sentence(point) for point in section.important_points[:2]
+        )
+    points.extend(
+        _compact_sentence(item.statement)
+        for item in formulas_or_facts[: max(2, limit // 4)]
+    )
     return _dedupe_text(points)[:limit]
 
 
@@ -1364,14 +1668,18 @@ def _build_overview(
     paragraph_count: int,
 ) -> str:
     if not section_notes:
-        return f"{subject} is covered with emphasis on the main learning goal: {main_goal}"
+        return (
+            f"{subject} is covered with emphasis on the main learning goal: {main_goal}"
+        )
 
     groups = _group_list(section_notes, max(1, paragraph_count))
     paragraphs = []
     for group in groups:
         titles = ", ".join(section.section_title for section in group)
         summary_text = " ".join(
-            _compact_sentence(section.section_summary) for section in group if section.section_summary
+            _compact_sentence(section.section_summary)
+            for section in group
+            if section.section_summary
         )
         paragraph = f"{titles}: {summary_text}".strip(": ")
         paragraphs.append(paragraph)
@@ -1388,7 +1696,9 @@ def _build_quiz(
     questions: list[QuizQuestion] = []
     question_texts: set[str] = set()
     main_ideas = [chunk.main_idea for chunk in chunk_analyses if chunk.main_idea]
-    topic_explanations = [topic.importance for topic in analysis.topics if topic.importance]
+    topic_explanations = [
+        topic.importance for topic in analysis.topics if topic.importance
+    ]
 
     def add_question(question: QuizQuestion) -> None:
         if question.question not in question_texts and len(questions) < quiz_count:
@@ -1414,7 +1724,9 @@ def _build_quiz(
         return questions[:1]
 
     section_quota = min(len(chunk_analyses), max(2, quiz_count // 2))
-    definition_quota = min(len(definitions), max(1, (quiz_count - 1 - section_quota) // 2))
+    definition_quota = min(
+        len(definitions), max(1, (quiz_count - 1 - section_quota) // 2)
+    )
     fact_quota = min(
         len(formulas_or_facts),
         max(1, quiz_count - 1 - section_quota - definition_quota),
@@ -1471,7 +1783,9 @@ def _build_quiz(
             )
         )
 
-    topic_targets = _sample_evenly(analysis.topics, min(len(analysis.topics), quiz_count))
+    topic_targets = _sample_evenly(
+        analysis.topics, min(len(analysis.topics), quiz_count)
+    )
     for index, topic in enumerate(topic_targets, start=1):
         add_question(
             _make_question(
@@ -1601,6 +1915,8 @@ def _trim_topic_importance(topic_name: str, importance: str) -> str:
 
 def _trim_definition_text(term: str, definition: str) -> str:
     normalized = _normalize_inline_text(re.sub(r"^#+\s*", "", definition))
-    pattern = re.compile(rf"^(?:{re.escape(term)}|definition|important fact)\s*:\s*", re.IGNORECASE)
+    pattern = re.compile(
+        rf"^(?:{re.escape(term)}|definition|important fact)\s*:\s*", re.IGNORECASE
+    )
     trimmed = pattern.sub("", normalized).strip()
     return trimmed or normalized
