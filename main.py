@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 import sys
 from pathlib import Path
@@ -11,6 +12,38 @@ from graph import build_study_coach_graph
 from schemas import SummaryMode
 from state import AgentState
 from utils import create_llm, list_input_files
+
+
+# Configure logging
+def setup_logging(verbose: bool = False) -> logging.Logger:
+    """Configure logging for the application."""
+    log_level = logging.DEBUG if verbose else logging.INFO
+
+    # Create logger
+    logger = logging.getLogger()
+    logger.setLevel(log_level)
+
+    # Remove existing handlers
+    logger.handlers = []
+
+    # Create console handler
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(log_level)
+
+    # Create formatter
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    console_handler.setFormatter(formatter)
+
+    # Add handler to logger
+    logger.addHandler(console_handler)
+
+    return logger
+
+
+logger = logging.getLogger(__name__)
 
 SUMMARY_MODE_CHOICES = {
     "1": SummaryMode.LARGE,
@@ -69,6 +102,11 @@ def parse_args() -> argparse.Namespace:
         default="sample_input",
         help="Folder scanned during interactive mode.",
     )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Enable verbose debug logging.",
+    )
     return parser.parse_args()
 
 
@@ -93,16 +131,27 @@ def _prompt_output_name() -> str:
 
 
 def _collect_interactive_config(args: argparse.Namespace) -> dict[str, object]:
+    logger.info("Starting interactive mode")
     input_dir = Path(args.input_dir)
-    available_files = list_input_files(input_dir)
+
+    try:
+        available_files = list_input_files(input_dir)
+    except Exception as e:
+        logger.error(f"Failed to list input files from {input_dir}: {str(e)}")
+        raise
+
     if not available_files:
-        raise FileNotFoundError(f"No supported files were found in {input_dir}")
+        error_msg = f"No supported files were found in {input_dir}"
+        logger.error(error_msg)
+        raise FileNotFoundError(error_msg)
 
     print("Available lecture files:")
     file_choices: dict[str, Path] = {}
     for index, file_path in enumerate(available_files, start=1):
         print(f"{index}. {file_path.name}")
         file_choices[str(index)] = file_path
+
+    logger.debug(f"Found {len(available_files)} available input files")
     selected_file = _prompt_choice("Select a file by number: ", file_choices)
 
     print("\nSelect summary size:")
@@ -110,6 +159,7 @@ def _collect_interactive_config(args: argparse.Namespace) -> dict[str, object]:
     print("2. Medium")
     print("3. Small")
     summary_mode = _prompt_choice("Choose summary size: ", SUMMARY_MODE_CHOICES)
+    logger.debug(f"Selected summary mode: {summary_mode}")
 
     output_name = _prompt_output_name()
 
@@ -118,6 +168,7 @@ def _collect_interactive_config(args: argparse.Namespace) -> dict[str, object]:
     print("2. 5")
     print("3. 10")
     quiz_count = _prompt_choice("Choose quiz count: ", QUIZ_COUNT_CHOICES)
+    logger.debug(f"Selected quiz count: {quiz_count}")
 
     return {
         "input_path": str(selected_file),
@@ -129,12 +180,34 @@ def _collect_interactive_config(args: argparse.Namespace) -> dict[str, object]:
 
 
 def _collect_non_interactive_config(args: argparse.Namespace) -> dict[str, object]:
+    logger.info(f"Starting non-interactive mode with input: {args.input_path}")
+
+    # Validate input file exists
+    input_path = Path(args.input_path)
+    if not input_path.exists():
+        error_msg = f"Input file not found: {args.input_path}"
+        logger.error(error_msg)
+        raise FileNotFoundError(error_msg)
+
+    if not input_path.is_file():
+        error_msg = f"Input path is not a file: {args.input_path}"
+        logger.error(error_msg)
+        raise ValueError(error_msg)
+
+    logger.info(
+        f"Input file validated: {input_path.name} ({input_path.stat().st_size} bytes)"
+    )
+
     summary_mode = SummaryMode(args.mode) if args.mode else SummaryMode.MEDIUM
     output_path = args.output or str(Path("sample_output") / "study_report.md")
     quiz_count = args.quiz_count if args.quiz_count is not None else 5
 
+    logger.debug(
+        f"Config: mode={summary_mode}, quiz_count={quiz_count}, output={output_path}"
+    )
+
     return {
-        "input_path": str(Path(args.input_path)),
+        "input_path": str(input_path),
         "output_path": str(Path(output_path)),
         "summary_mode": summary_mode,
         "quiz_count": quiz_count,
@@ -165,15 +238,28 @@ def main() -> int:
     load_dotenv()
     args = parse_args()
 
+    # Setup logging
+    setup_logging(verbose=args.verbose)
+    logger.info("=" * 80)
+    logger.info("Starting AI Study Coach")
+    logger.info(f"Provider: {args.provider}, Model: {args.model}")
+    logger.info("=" * 80)
+
     try:
+        logger.info("Collecting configuration")
         if args.input_path is None:
             config = _collect_interactive_config(args)
         else:
             config = _collect_non_interactive_config(args)
 
+        logger.info("Building LLM client")
         llm_client = create_llm(provider=args.provider, model_name=args.model)
+        logger.info(f"LLM client created: {llm_client.provider_name}")
+
+        logger.info("Building study coach graph")
         graph = build_study_coach_graph(llm_client)
 
+        logger.info("Initializing graph execution")
         initial_state = AgentState(
             input_path=config["input_path"],
             output_path=config["output_path"],
@@ -181,7 +267,13 @@ def main() -> int:
             summary_mode=config["summary_mode"],
             quiz_count=config["quiz_count"],
         )
+
+        logger.info("Starting graph execution pipeline")
         final_state = AgentState.model_validate(graph.invoke(initial_state))
+
+        logger.info("=" * 80)
+        logger.info("Pipeline completed successfully")
+        logger.info("=" * 80)
 
         print(f"\nProvider used: {llm_client.provider_name}")
         print(f"Markdown report saved to: {final_state.exported_output_path}")
@@ -190,9 +282,25 @@ def main() -> int:
         if final_state.study_material is not None:
             print(f"Detected subject: {final_state.study_material.subject}")
         _print_coverage_report(final_state)
+
+        logger.info("Execution completed successfully")
         return 0
-    except Exception as exc:
-        print(f"Error: {exc}", file=sys.stderr)
+
+    except FileNotFoundError as e:
+        logger.error(f"File not found: {str(e)}")
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+    except ValueError as e:
+        logger.error(f"Validation error: {str(e)}")
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+    except KeyboardInterrupt:
+        logger.warning("Process interrupted by user")
+        print("\nProcess interrupted by user", file=sys.stderr)
+        return 130
+    except Exception as e:
+        logger.exception(f"Unexpected error occurred: {str(e)}")
+        print(f"Error: {e}", file=sys.stderr)
         return 1
 
 
